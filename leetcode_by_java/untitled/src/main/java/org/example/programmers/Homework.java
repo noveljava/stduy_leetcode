@@ -1,68 +1,96 @@
 package org.example.programmers;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class Homework {
+
     class Subject {
         String name;
-        long startTime;
-        long endTime;
-        long duration;
-        long remindDuration;
+        int start;
+        int playtime;
 
-        public Subject(String name, String startTime, String duration) {
+        Subject(String name, String start, String playtime) {
             this.name = name;
-            this.startTime = this.totalMinutes(startTime);
-            this.duration = Long.parseLong(duration);
-            this.endTime = this.startTime + this.duration;
-            this.remindDuration = this.duration;
+            setStart(start);
+            this.playtime = Integer.parseInt(playtime);
         }
 
-        private long totalMinutes(String time) {
-            String[] times = time.split(":");
-            return Long.parseLong(times[0]) * 60 + Long.parseLong(times[1]);
+        private void setStart(String start) {
+            String[] tmp = start.split(":");
+            this.start = Integer.parseInt(tmp[0]) * 60 + Integer.parseInt(tmp[1]);
         }
 
-        public void setRemindDuration(long finishDuration) {
-            this.remindDuration = this.remindDuration - finishDuration;
+        public int getStart() {
+            return this.start;
+        }
+
+        public int getPlaytime() {
+            return this.playtime;
+        }
+
+        public void setPlaytime(int playtime) {
+            this.playtime = playtime;
+        }
+
+        public String getName() {
+            return this.name;
+        }
+
+        @Override
+        public String toString() {
+            return this.name;
         }
     }
 
-    public String[] solution(String[][] plans) {
-        String[] answer = {};
-        List<Subject> subjectList = new ArrayList<>();
-        Stack<Subject> stack = new Stack<>();
+    public String[] solution(String[][] tmp) {
+        Deque<Subject> plans = new ArrayDeque<>();
+        Stack<Subject> temporary = new Stack<>();
 
-        for (String[] plan : plans) {
-            subjectList.add(new Subject(plan[0], plan[1], plan[2]));
-        }
+        setting(tmp, plans);
 
-        subjectList.sort((o1, o2) -> (int) (o1.startTime - o2.startTime));
-        Queue<Subject> queue = new LinkedList<>(subjectList);
-
-        int idx = 1;
-        long currentTime = subjectList.get(0).startTime;
+        int timer = plans.peek().getStart();
         List<String> result = new ArrayList<>();
 
-        Subject subject = queue.poll();
-        while (!queue.isEmpty() || !stack.empty()) {
-           Subject nextSubject = queue.poll();
-            if (nextSubject.startTime <= subject.endTime) {
-                long remindDuration = subject.endTime - nextSubject.startTime;
-                subject.setRemindDuration(remindDuration);
-                currentTime = nextSubject.startTime;
-
-                stack.push(subject);
-                subject = nextSubject;
+        while (!plans.isEmpty()) {
+            // 진행중이던 과제를 끝냈을 때, 잠시 멈춘 과제가 있다면, 멈춰둔 과제를 이어서 진행합니다.
+            Subject processingSubject = null;
+            if (!temporary.isEmpty() && plans.peek().getStart() > timer) {
+                processingSubject = temporary.pop();
             } else {
-                result.add(subject.name);
-                currentTime = subject.endTime;
-
-                queue.add(stack.pop());
+                processingSubject = plans.pop();
+                timer = processingSubject.getStart();
             }
+
+            int expectedEndTime = timer + processingSubject.getPlaytime();
+
+            if (!plans.isEmpty() && expectedEndTime > plans.peek().getStart()) {
+                int remindPlayTime = expectedEndTime - plans.peek().getStart();
+                processingSubject.setPlaytime(remindPlayTime);
+                temporary.push(processingSubject);
+                timer = plans.peek().getStart();
+
+                continue;
+            }
+
+            timer = expectedEndTime;
+            result.add(processingSubject.getName());
         }
 
-        System.out.print(result);
-        return answer;
-   }
+        while (!temporary.isEmpty()) {
+            result.add(temporary.pop().getName());
+        }
+
+        return result.toArray(new String[0]);
+    }
+
+    void setting(String[][] plans, Deque<Subject> sortedPlans) {
+        List<Subject> tempPlans = new ArrayList<>();
+        for(String[] e : plans) {
+            tempPlans.add(new Subject(e[0], e[1], e[2]));
+        }
+        tempPlans.sort(Comparator.comparingInt(Subject::getStart));
+
+        sortedPlans.addAll(tempPlans);
+    }
 }
